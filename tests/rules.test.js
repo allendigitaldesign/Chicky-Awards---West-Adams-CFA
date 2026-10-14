@@ -4,7 +4,8 @@ const assert = require('node:assert');
 const { AWARDS, validateBallot, tally, nomineeLabel } = require('../rules.js');
 
 const TODAY = '2026-12-01';
-const everyone = (first, initial) => Object.fromEntries(AWARDS.map(a => [a.id, { first, initial }]));
+const everyone = (first, initial) => Object.fromEntries(AWARDS.map(a => [a.id, { first, initial, first2: 'Lee', initial2: 'T' }]));
+const PAIR = AWARDS.find(a => a.pair).id;
 const ballot = (votes, voter = { first: 'Jane', last: 'Doe' }) => validateBallot({ ...voter, votes }, TODAY);
 
 test('accepts a full ballot and tidies names', () => {
@@ -56,4 +57,25 @@ test('tally merges spellings, sorts by votes and shares rank on ties', () => {
     ['Sam K.', 3, 1], ['Ana P.', 2, 2], ['Lee T.', 2, 2]
   ]);
   assert.deepStrictEqual(tally([])[1].results, []);
+});
+
+test('the pair award needs two different people, neither of them you', () => {
+  const votes = everyone('Sam', 'K');
+  const ok = ballot(votes);
+  assert.strictEqual(ok.ballot.picks.find(p => p.award === PAIR).nominee, 'Lee T. + Sam K.');
+
+  votes[PAIR] = { first: 'Sam', initial: 'K', first2: '', initial2: '' };
+  assert.match(ballot(votes).error, /two people.*second person/);
+
+  votes[PAIR] = { first: 'Sam', initial: 'K', first2: 'sam', initial2: 'k.' };
+  assert.match(ballot(votes).error, /two different people/);
+
+  votes[PAIR] = { first: 'Sam', initial: 'K', first2: 'Jane', initial2: 'D' };
+  assert.match(ballot(votes).error, /yourself/);
+});
+
+test('tally counts a pair the same in either order', () => {
+  const b = (name) => ({ picks: { [PAIR]: name } });
+  const pair = tally([b('Lee T. + Sam K.'), b('sam k + lee t'), b('Ana P. + Sam K.')]).find(t => t.award === PAIR);
+  assert.deepStrictEqual(pair.results.map(r => [r.nominee, r.votes, r.rank]), [['Lee T. + Sam K.', 2, 1], ['Ana P. + Sam K.', 1, 2]]);
 });

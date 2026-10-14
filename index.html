@@ -121,7 +121,7 @@
   input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
   input[aria-invalid="true"] { border-color: var(--err); }
 
-  /* Awards: one bordered block per award, nominee = first name + one-letter initial. */
+  /* Awards: one bordered block per award, nominee = first name + one-letter initial (two rows for a pair award). */
   .awards { display: grid; gap: 12px; }
   .award {
     border: 1px solid var(--line);
@@ -202,7 +202,7 @@
     <div class="eyebrow">West Adams · Holiday Party 2026</div>
     <h1>Vote for the <em>Chicky Awards</em></h1>
     <ul class="rules">
-      <li>Vote for one teammate in every award.</li>
+      <li>Vote for one teammate in every award (two for Stuck Like Glue).</li>
       <li>Enter their first name and the first letter of their last name.</li>
       <li>You can't vote for yourself, and you can vote once.</li>
     </ul>
@@ -276,36 +276,46 @@
     $('closedCard').hidden = false;
   }
 
-  // One block per award
+  // One block per award; a pair award gets two name rows.
   AWARDS.forEach(function (a) {
     var box = document.createElement('div');
     box.className = 'award';
     box.id = 'award-' + a.id;
     box.innerHTML =
       '<h3><span class="name"></span><span class="check" aria-hidden="true">✓</span></h3>' +
-      '<p class="desc"></p>' +
-      '<div class="nominee">' +
-        '<label class="field"><span>First name</span>' +
-          '<input type="text" class="nf" maxlength="40" autocomplete="off" autocapitalize="words"></label>' +
-        '<label class="field initial"><span>Last initial</span>' +
-          '<input type="text" class="ni" maxlength="2" autocomplete="off" autocapitalize="characters"></label>' +
-      '</div>' +
-      '<p class="err" aria-live="polite"></p>';
+      '<p class="desc"></p>';
     box.querySelector('.name').textContent = a.name;
     var desc = box.querySelector('.desc');
     if (a.description) desc.textContent = a.description; else desc.remove();
-    var nf = box.querySelector('.nf');
-    var ni = box.querySelector('.ni');
-    nf.setAttribute('aria-label', a.name + ': first name');
-    ni.setAttribute('aria-label', a.name + ': last initial');
-    nf.addEventListener('input', update);
-    ni.addEventListener('input', function () {
-      // Keep just the letter if they type the whole last name.
-      if (ni.value.replace(/\./g, '').length > 1) ni.value = ni.value.charAt(0);
-      update();
+
+    (a.pair ? ['Person 1', 'Person 2'] : ['']).forEach(function (who) {
+      var row = document.createElement('div');
+      row.className = 'nominee';
+      row.innerHTML =
+        '<label class="field"><span></span>' +
+          '<input type="text" class="nf" maxlength="40" autocomplete="off" autocapitalize="words"></label>' +
+        '<label class="field initial"><span>Last initial</span>' +
+          '<input type="text" class="ni" maxlength="2" autocomplete="off" autocapitalize="characters"></label>';
+      row.querySelector('span').textContent = who ? who + ': first name' : 'First name';
+      var nf = row.querySelector('.nf');
+      var ni = row.querySelector('.ni');
+      nf.setAttribute('aria-label', a.name + ': ' + (who ? who + ' ' : '') + 'first name');
+      ni.setAttribute('aria-label', a.name + ': ' + (who ? who + ' ' : '') + 'last initial');
+      nf.addEventListener('input', update);
+      ni.addEventListener('input', function () {
+        // Keep just the letter if they type the whole last name.
+        if (ni.value.replace(/\./g, '').length > 1) ni.value = ni.value.charAt(0);
+        update();
+      });
+      nf.addEventListener('blur', function () { checkAward(a.id, false); });
+      ni.addEventListener('blur', function () { checkAward(a.id, false); });
+      box.appendChild(row);
     });
-    nf.addEventListener('blur', function () { checkAward(a.id, false); });
-    ni.addEventListener('blur', function () { checkAward(a.id, false); });
+
+    var err = document.createElement('p');
+    err.className = 'err';
+    err.setAttribute('aria-live', 'polite');
+    box.appendChild(err);
     $('awards').appendChild(box);
   });
 
@@ -317,7 +327,10 @@
     var votes = {};
     AWARDS.forEach(function (a) {
       var box = $('award-' + a.id);
-      votes[a.id] = { first: box.querySelector('.nf').value, initial: box.querySelector('.ni').value };
+      var nf = box.querySelectorAll('.nf');
+      var ni = box.querySelectorAll('.ni');
+      votes[a.id] = { first: nf[0].value, initial: ni[0].value };
+      if (a.pair) { votes[a.id].first2 = nf[1].value; votes[a.id].initial2 = ni[1].value; }
     });
     return { first: $('first').value, last: $('last').value, votes: votes };
   }
@@ -327,14 +340,14 @@
     var b = readBallot();
     var validVoter = NAME_PATTERN.test(cleanName(b.first)) && NAME_PATTERN.test(cleanName(b.last));
     var probe = { first: validVoter ? b.first : 'Voter', last: validVoter ? b.last : 'Name', votes: {} };
-    AWARDS.forEach(function (a) { probe.votes[a.id] = a.id === id ? b.votes[id] : { first: 'Zz', initial: 'Z' }; });
+    AWARDS.forEach(function (a) { probe.votes[a.id] = a.id === id ? b.votes[id] : { first: 'Zz', initial: 'Z', first2: 'Yy', initial2: 'Y' }; });
     var r = validateBallot(probe, todayIso());
     return !r.ok && r.award === id ? r.error : null;
   }
 
   function isFilled(id) {
-    var v = readBallot().votes[id];
-    return !!(cleanName(v.first) && cleanName(v.initial));
+    var inputs = $('award-' + id).querySelectorAll('input');
+    return Array.prototype.every.call(inputs, function (el) { return !!cleanName(el.value); });
   }
 
   // showEmpty: also flag a block that's still blank (on submit); otherwise only real problems.
@@ -344,8 +357,7 @@
     box.querySelector('.err').textContent = err || '';
     box.classList.toggle('bad', !!err);
     box.classList.toggle('filled', !err && isFilled(id));
-    box.querySelector('.nf').setAttribute('aria-invalid', err ? 'true' : 'false');
-    box.querySelector('.ni').setAttribute('aria-invalid', err ? 'true' : 'false');
+    box.querySelectorAll('input').forEach(function (el) { el.setAttribute('aria-invalid', err ? 'true' : 'false'); });
     return err;
   }
 
@@ -377,7 +389,9 @@
         AWARDS.forEach(function (a) { checkAward(a.id, true); });
         var box = $('award-' + check.award);
         box.scrollIntoView({ block: 'start' });
-        (cleanName(payload.votes[check.award].first) ? box.querySelector('.ni') : box.querySelector('.nf')).focus({ preventScroll: true });
+        var inputs = Array.prototype.slice.call(box.querySelectorAll('input'));
+        var blank = inputs.filter(function (el) { return !cleanName(el.value); })[0];
+        (blank || inputs[0]).focus({ preventScroll: true });
       } else {
         showError(check.error);
         $('first').focus();

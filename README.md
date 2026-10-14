@@ -9,13 +9,28 @@ There is no database to run: the Google Sheet is the record.
 
 - Voters enter their own first and last name.
 - They vote for one teammate in **every** award, by first name and last initial (for example *Jane* + *D*).
-- No voting for yourself: a nominee whose first name and last initial match the voter's is rejected.
+- **Stuck Like Glue** is for a duo, so it takes two different people. The pair is counted the same
+  whichever order it's entered in ("Ana P. + Sam K." either way round).
+- No voting for yourself: a nominee whose first name and last initial match the voter's is rejected
+  (including either half of the Stuck Like Glue pair).
 - One ballot per person (matched on first + last name, ignoring capitals, accents and extra spaces).
   If a leader deletes someone's row, that person can vote again.
 - Optional last day to vote (`VOTING_CLOSES` in `rules.js`). After it, the page says voting has closed.
 
-The awards are listed in [`rules.js`](rules.js). **The ones there now are placeholders**:
-replace them with your real awards before sharing the link (see "Changing the awards" below).
+The awards are listed in [`rules.js`](rules.js):
+
+| Award | Description |
+|-------|-------------|
+| Perfect Attendance | |
+| Best Dressed | Always in complete uniform |
+| Sunshine Award | Can brighten anyone's day |
+| Nuggets of Positivity Award | Always positive |
+| Energizer Bunny | Drinks the most caffeine |
+| Stuck Like Glue Award | Two people who are never apart (vote for two) |
+| Fastest Breader | |
+| Fastest and Most Accurate Bagger | Must be both fast and accurate |
+| Moment Maker | Gets along with anyone and everyone |
+| ET Award | Volunteers to go home the most |
 
 ## How leaders use it
 
@@ -84,7 +99,8 @@ Until this is filled in, the page runs in practice mode: it checks the rules but
 ## Changing the awards
 
 All awards and the closing date live in [`rules.js`](rules.js). Each award has an `id` (short, no spaces),
-a `name` (shown on the page and used as the Sheet column) and an optional `description`.
+a `name` (shown on the page and used as the Sheet column), an optional `description`, and
+`pair: true` if voters should name two people for it.
 Set them before voting starts; renaming an award after votes are in starts a new, empty column for it.
 
 After editing `rules.js`:
