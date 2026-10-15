@@ -1,0 +1,457 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Chicky Awards Ballot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;800&family=Atkinson+Hyperlegible:wght@400;700&display=swap">
+<style>
+  /* Layout: one narrow column, a ballot that reads top to bottom, one card per award. */
+  :root {
+    --bg: #faf7f6;
+    --surface: #ffffff;
+    --ink: #221a19;
+    --muted: #6d6260;
+    --line: #e6dedc;
+    --accent: #c8102e;
+    --accent-ink: #ffffff;
+    --accent-soft: #fbe7ea;
+    --pine: #1d6b45;
+    --pine-soft: #e4f2ea;
+    --warn: #9a5a00;
+    --warn-soft: #fff3dc;
+    --err: #b3261e;
+    --err-soft: #fdecea;
+    --font-display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    --font-body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --radius: 12px;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #171312;
+      --surface: #221c1b;
+      --ink: #f4eeed;
+      --muted: #b3a7a5;
+      --line: #3a3130;
+      --accent: #ff5468;
+      --accent-ink: #1a0c0e;
+      --accent-soft: #3d1a20;
+      --pine: #6fd69a;
+      --pine-soft: #173325;
+      --warn: #f1b75a;
+      --warn-soft: #3a2a10;
+      --err: #ff8a80;
+      --err-soft: #3d1c1a;
+      color-scheme: dark;
+    }
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 400 17px/1.5 var(--font-body);
+    padding: max(24px, env(safe-area-inset-top)) 16px max(40px, env(safe-area-inset-bottom));
+  }
+  .wrap { max-width: 560px; margin: 0 auto; display: grid; gap: 20px; }
+
+  header { display: grid; gap: 8px; }
+  .eyebrow {
+    font: 600 13px/1 var(--font-display);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--pine);
+  }
+  h1 {
+    margin: 0;
+    font: 800 clamp(28px, 7vw, 38px)/1.08 var(--font-display);
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+  h1 em { font-style: normal; color: var(--accent); }
+  .rules { margin: 4px 0 0; padding-left: 20px; color: var(--muted); display: grid; gap: 2px; }
+
+  .banner {
+    background: var(--warn-soft);
+    color: var(--warn);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: 15px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 20px;
+    display: grid;
+    gap: 22px;
+  }
+
+  fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 10px; min-width: 0; }
+  legend, .label {
+    font: 600 15px/1.2 var(--font-display);
+    padding: 0;
+    margin-bottom: 10px;
+  }
+  .step { color: var(--muted); font-weight: 600; margin-right: 6px; }
+  .hint { margin: -4px 0 0; color: var(--muted); font-size: 15px; }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  @media (max-width: 400px) { .two { grid-template-columns: 1fr; } }
+  .field { display: grid; gap: 4px; min-width: 0; }
+  .field span { font-size: 14px; color: var(--muted); }
+
+  input[type="text"] {
+    width: 100%;
+    font: inherit;
+    color: var(--ink);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px 12px;
+    min-height: 48px;
+  }
+  input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 1px; border-color: transparent; }
+  input[aria-invalid="true"] { border-color: var(--err); }
+
+  /* Awards: one bordered block per award, nominee = first name + one-letter initial (two rows for a pair award). */
+  .awards { display: grid; gap: 12px; }
+  .award {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px;
+    display: grid;
+    gap: 10px;
+    background: var(--bg);
+    scroll-margin-top: 16px;
+  }
+  .award.filled { border-color: var(--pine); box-shadow: inset 3px 0 0 var(--pine); }
+  .award.bad { border-color: var(--err); box-shadow: inset 3px 0 0 var(--err); }
+  .award h3 { margin: 0; font: 700 17px/1.25 var(--font-display); display: flex; justify-content: space-between; gap: 8px; }
+  .award h3 .check { color: var(--pine); font-size: 15px; visibility: hidden; }
+  .award.filled h3 .check { visibility: visible; }
+  .award p { margin: -6px 0 0; color: var(--muted); font-size: 15px; }
+  .nominee { display: grid; grid-template-columns: 1fr 96px; gap: 10px; }
+  .nominee input { background: var(--surface); }
+  .nominee .initial input { text-align: center; text-transform: uppercase; }
+  .award .err { margin: 0; color: var(--err); font-size: 15px; }
+
+  .progress { margin: 0; font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; text-align: center; }
+
+  .submit {
+    font: 700 17px/1 var(--font-display);
+    background: var(--accent);
+    color: var(--accent-ink);
+    border: 0;
+    border-radius: 999px;
+    padding: 16px 20px;
+    min-height: 52px;
+    cursor: pointer;
+    width: 100%;
+  }
+  .submit:disabled { opacity: 0.6; cursor: progress; }
+  .submit:focus-visible, .link:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+  .link {
+    font: 600 15px/1 var(--font-body);
+    background: none;
+    border: 0;
+    padding: 8px 0;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor: pointer;
+    justify-self: start;
+  }
+
+  .alert { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--err-soft); color: var(--err); font-size: 15px; }
+
+  .done { display: grid; gap: 14px; }
+  .done h2 { margin: 0; font: 800 26px/1.15 var(--font-display); }
+  .slip { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; }
+  .slip dt { color: var(--muted); font-size: 15px; }
+  .slip dd { margin: 0; font-weight: 700; min-width: 0; }
+  .pill {
+    display: inline-block;
+    justify-self: start;
+    font: 600 13px/1 var(--font-display);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 6px 10px;
+    border-radius: 999px;
+    background: var(--pine-soft);
+    color: var(--pine);
+  }
+  .pill.practice { background: var(--warn-soft); color: var(--warn); }
+
+  footer { color: var(--muted); font-size: 13px; text-align: center; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .award, .submit { transition: background-color .15s, border-color .15s, box-shadow .15s; }
+  }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header>
+    <div class="eyebrow">West Adams · Holiday Party 2026</div>
+    <h1>Vote for the <em>Chicky Awards</em></h1>
+    <ul class="rules">
+      <li>Vote for one teammate in every award (two for Stuck Like Glue).</li>
+      <li>Enter their first name and the first letter of their last name.</li>
+      <li>You can't vote for yourself, and you can vote once.</li>
+    </ul>
+  </header>
+
+  <div class="banner" id="setupBanner" hidden>
+    Practice mode: this page isn't connected to the Google Sheet yet, so votes won't be saved. Follow the setup steps in the README.
+  </div>
+
+  <section class="card done" id="closedCard" hidden>
+    <h2>Voting has closed</h2>
+    <p class="hint">Thanks to everyone who voted. See you at the holiday party!</p>
+  </section>
+
+  <form class="card" id="ballotForm" novalidate>
+    <fieldset>
+      <legend><span class="step">1</span>Your name</legend>
+      <div class="two">
+        <label class="field"><span>First name</span>
+          <input type="text" id="first" name="first" autocomplete="given-name" maxlength="40" required>
+        </label>
+        <label class="field"><span>Last name</span>
+          <input type="text" id="last" name="last" autocomplete="family-name" maxlength="40" required>
+        </label>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend><span class="step">2</span>Your votes</legend>
+      <p class="hint">For example, to vote for Jane Doe enter <b>Jane</b> and <b>D</b>.</p>
+      <div class="awards" id="awards"></div>
+    </fieldset>
+
+    <p class="alert" id="formError" role="alert" hidden></p>
+    <p class="progress" id="progress" aria-live="polite"></p>
+    <button class="submit" type="submit" id="submitBtn">Cast my votes</button>
+  </form>
+
+  <section class="card done" id="doneCard" hidden aria-live="polite">
+    <span class="pill" id="donePill">Counted</span>
+    <h2 id="doneTitle">Thanks for voting!</h2>
+    <p class="hint" id="doneText"></p>
+    <dl class="slip" id="doneVotes"></dl>
+    <button class="link" type="button" id="againBtn">Vote as someone else</button>
+  </section>
+
+  <footer>Winners are announced at the holiday party. Questions? Ask a leader.</footer>
+</main>
+
+<script src="rules.js"></script>
+<script src="config.js"></script>
+<script>
+(function () {
+  var SCRIPT_URL = ((window.APP_CONFIG && window.APP_CONFIG.scriptUrl) || '').trim();
+  var connected = /^https:\/\/script\.google\.com\//.test(SCRIPT_URL);
+
+  var $ = function (id) { return document.getElementById(id); };
+  var form = $('ballotForm');
+
+  if (!connected) $('setupBanner').hidden = false;
+
+  // Today in the store's local time (from the device), as YYYY-MM-DD.
+  function todayIso() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  if (votingClosed(todayIso())) {
+    form.hidden = true;
+    $('setupBanner').hidden = true;
+    $('closedCard').hidden = false;
+  }
+
+  // One block per award; a pair award gets two name rows.
+  AWARDS.forEach(function (a) {
+    var box = document.createElement('div');
+    box.className = 'award';
+    box.id = 'award-' + a.id;
+    box.innerHTML =
+      '<h3><span class="name"></span><span class="check" aria-hidden="true">✓</span></h3>' +
+      '<p class="desc"></p>';
+    box.querySelector('.name').textContent = a.name;
+    var desc = box.querySelector('.desc');
+    if (a.description) desc.textContent = a.description; else desc.remove();
+
+    (a.pair ? ['Person 1', 'Person 2'] : ['']).forEach(function (who) {
+      var row = document.createElement('div');
+      row.className = 'nominee';
+      row.innerHTML =
+        '<label class="field"><span></span>' +
+          '<input type="text" class="nf" maxlength="40" autocomplete="off" autocapitalize="words"></label>' +
+        '<label class="field initial"><span>Last initial</span>' +
+          '<input type="text" class="ni" maxlength="2" autocomplete="off" autocapitalize="characters"></label>';
+      row.querySelector('span').textContent = who ? who + ': first name' : 'First name';
+      var nf = row.querySelector('.nf');
+      var ni = row.querySelector('.ni');
+      nf.setAttribute('aria-label', a.name + ': ' + (who ? who + ' ' : '') + 'first name');
+      ni.setAttribute('aria-label', a.name + ': ' + (who ? who + ' ' : '') + 'last initial');
+      nf.addEventListener('input', update);
+      ni.addEventListener('input', function () {
+        // Keep just the letter if they type the whole last name.
+        if (ni.value.replace(/\./g, '').length > 1) ni.value = ni.value.charAt(0);
+        update();
+      });
+      nf.addEventListener('blur', function () { checkAward(a.id, false); });
+      ni.addEventListener('blur', function () { checkAward(a.id, false); });
+      box.appendChild(row);
+    });
+
+    var err = document.createElement('p');
+    err.className = 'err';
+    err.setAttribute('aria-live', 'polite');
+    box.appendChild(err);
+    $('awards').appendChild(box);
+  });
+
+  ['first', 'last'].forEach(function (id) {
+    $(id).addEventListener('input', update);
+  });
+
+  function readBallot() {
+    var votes = {};
+    AWARDS.forEach(function (a) {
+      var box = $('award-' + a.id);
+      var nf = box.querySelectorAll('.nf');
+      var ni = box.querySelectorAll('.ni');
+      votes[a.id] = { first: nf[0].value, initial: ni[0].value };
+      if (a.pair) { votes[a.id].first2 = nf[1].value; votes[a.id].initial2 = ni[1].value; }
+    });
+    return { first: $('first').value, last: $('last').value, votes: votes };
+  }
+
+  // Validates the ballot as if only this award mattered, so each block can show its own problem.
+  function awardError(id) {
+    var b = readBallot();
+    var validVoter = NAME_PATTERN.test(cleanName(b.first)) && NAME_PATTERN.test(cleanName(b.last));
+    var probe = { first: validVoter ? b.first : 'Voter', last: validVoter ? b.last : 'Name', votes: {} };
+    AWARDS.forEach(function (a) { probe.votes[a.id] = a.id === id ? b.votes[id] : { first: 'Zz', initial: 'Z', first2: 'Yy', initial2: 'Y' }; });
+    var r = validateBallot(probe, todayIso());
+    return !r.ok && r.award === id ? r.error : null;
+  }
+
+  function isFilled(id) {
+    var inputs = $('award-' + id).querySelectorAll('input');
+    return Array.prototype.every.call(inputs, function (el) { return !!cleanName(el.value); });
+  }
+
+  // showEmpty: also flag a block that's still blank (on submit); otherwise only real problems.
+  function checkAward(id, showEmpty) {
+    var box = $('award-' + id);
+    var err = isFilled(id) || showEmpty ? awardError(id) : null;
+    box.querySelector('.err').textContent = err || '';
+    box.classList.toggle('bad', !!err);
+    box.classList.toggle('filled', !err && isFilled(id));
+    box.querySelectorAll('input').forEach(function (el) { el.setAttribute('aria-invalid', err ? 'true' : 'false'); });
+    return err;
+  }
+
+  function update() {
+    var filled = 0;
+    AWARDS.forEach(function (a) {
+      var box = $('award-' + a.id);
+      // Clear an old error as soon as it's fixed; new errors wait for blur or submit.
+      if (box.classList.contains('bad')) checkAward(a.id, true);
+      else box.classList.toggle('filled', isFilled(a.id) && !awardError(a.id));
+      if (isFilled(a.id)) filled++;
+    });
+    $('progress').textContent = filled + ' of ' + AWARDS.length + ' awards filled in';
+  }
+  update();
+
+  function showError(msg) {
+    $('formError').textContent = msg;
+    $('formError').hidden = !msg;
+  }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    showError('');
+    var payload = readBallot();
+    var check = validateBallot(payload, todayIso());
+    if (!check.ok) {
+      if (check.award) {
+        AWARDS.forEach(function (a) { checkAward(a.id, true); });
+        var box = $('award-' + check.award);
+        box.scrollIntoView({ block: 'start' });
+        var inputs = Array.prototype.slice.call(box.querySelectorAll('input'));
+        var blank = inputs.filter(function (el) { return !cleanName(el.value); })[0];
+        (blank || inputs[0]).focus({ preventScroll: true });
+      } else {
+        showError(check.error);
+        $('first').focus();
+      }
+      return;
+    }
+
+    if (!connected) { showDone(check.ballot, true); return; }
+
+    var btn = $('submitBtn');
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    fetch(SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload) })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (res.ok) showDone(res.ballot, false);
+        else showError(res.error || 'Something went wrong. Try again.');
+      })
+      .catch(function () {
+        showError('Your votes could not be sent. Check your connection and try again.');
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = 'Cast my votes';
+      });
+  });
+
+  function showDone(ballot, practice) {
+    var list = $('doneVotes');
+    list.innerHTML = '';
+    ballot.picks.forEach(function (p) {
+      var dt = document.createElement('dt');
+      var dd = document.createElement('dd');
+      dt.textContent = p.awardName;
+      dd.textContent = p.nominee;
+      list.appendChild(dt);
+      list.appendChild(dd);
+    });
+    $('donePill').textContent = practice ? 'Practice' : 'Counted';
+    $('donePill').className = 'pill' + (practice ? ' practice' : '');
+    $('doneTitle').textContent = practice ? 'Looks good (not saved)' : 'Thanks for voting, ' + ballot.first + '!';
+    $('doneText').textContent = practice
+      ? 'This page isn’t connected to the Google Sheet yet, so nothing was saved.'
+      : 'Your votes are in. Winners are announced at the holiday party.';
+    form.hidden = true;
+    $('doneCard').hidden = false;
+    $('doneCard').scrollIntoView({ block: 'start' });
+  }
+
+  $('againBtn').addEventListener('click', function () {
+    form.reset();
+    AWARDS.forEach(function (a) { checkAward(a.id, false); });
+    update();
+    showError('');
+    $('doneCard').hidden = true;
+    form.hidden = false;
+    window.scrollTo(0, 0);
+    $('first').focus();
+  });
+})();
+</script>
+</body>
+</html>
